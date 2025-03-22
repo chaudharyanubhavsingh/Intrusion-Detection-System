@@ -1,30 +1,9 @@
 import { AlertCircle, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { useSecurityData } from "./data/security-data"
 
-const alerts = [
-  {
-    id: 1,
-    title: "High-severity threat detected",
-    description: "Multiple login attempts from suspicious IP",
-    type: "error",
-    time: "2 minutes ago",
-  },
-  {
-    id: 2,
-    title: "Firewall rule updated",
-    description: "New rule added for port 443",
-    type: "success",
-    time: "10 minutes ago",
-  },
-  {
-    id: 3,
-    title: "Unusual network activity",
-    description: "Increased traffic from region: Asia",
-    type: "warning",
-    time: "25 minutes ago",
-  },
-]
 
 export function Alerts() {
+  const { alerts } = useSecurityData()
   return (
     <div className="grid gap-4 p-4">
       {alerts.map((alert) => (

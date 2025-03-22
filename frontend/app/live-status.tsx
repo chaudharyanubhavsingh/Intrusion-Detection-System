@@ -20,7 +20,7 @@ export function LiveStatus({ activeThreats }: LiveStatusProps) {
       <div className="w-px h-4 bg-gray-800" />
       <div className="flex items-center gap-2">
         <div className={`h-2 w-2 rounded-full ${activeThreats > 0 ? "bg-red-400 animate-pulse" : "bg-emerald-400"}`} />
-        <span className="text-sm">{activeThreats} Active Threats</span>
+        <span className="text-sm  text-rose-400">{activeThreats} Active Threats</span>
       </div>
     </div>
   )

@@ -20,34 +20,30 @@ import { SideNav } from "./side-nav";
 import { ThreatGlobe } from "./threat-globe";
 import { ThreatMap } from "./threat-map";
 import { ThreatTable } from "./threat-table";
+import { useSecurityData, CHART_DATA,  } from "./data/security-data"
+import { useWebSocket } from "./api/websocket"
+import { MOCK_THREATS } from "./data/security-data"
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
-  const [activeThreats, setActiveThreats] = useState(0);
-  const [totalThreats, setTotalThreats] = useState(2543);
-  const [networkTraffic, setNetworkTraffic] = useState("1.2 TB");
-  const [activeUsers, setActiveUsers] = useState(573);
-  const [blockedAttacks, setBlockedAttacks] = useState(89);
 
+  // Initialize WebSocket connection at the top level
+  useWebSocket();
+
+  // Use the security data hook to get real-time data
+  const securityData = useSecurityData();
+  const { connected, stats, activeThreats, threats } = securityData;
+
+  // Ensure mounting before rendering (Fixes hydration errors)
   useEffect(() => {
     setMounted(true);
-
-    // Simulate live updates for real-time analytics
-    const interval = setInterval(() => {
-      setActiveThreats(Math.floor(Math.random() * 10) + 1);
-      setTotalThreats((prev) => prev + Math.floor(Math.random() * 5));
-      setBlockedAttacks((prev) => prev + Math.floor(Math.random() * 3));
-    }, 3000);
-
-    return () => clearInterval(interval);
   }, []);
 
   if (!mounted) {
     return null;
   }
-
   return (
-    <div className="relative min-h-screen bg-[#0a0a0f] dark overflow-hidden">
+    <div className="relative min-h-screen bg-[#0a0a0f]  dark overflow-hidden">
       <ParticleBackground />
       <div className="flex relative z-10">
         <SideNav />
@@ -87,28 +83,28 @@ export default function DashboardPage() {
           <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Total Threats"
-              value={totalThreats}
+              value={stats.total_threats}
               icon={<Shield className="h-4 w-4 text-blue-400 group-hover:rotate-12 transition-transform" />}
               progressValue={45}
               color="blue"
             />
             <StatCard
               title="Network Traffic"
-              value={networkTraffic}
+              value={stats.network_traffic}
               icon={<Activity className="h-4 w-4 text-purple-400 group-hover:rotate-12 transition-transform" />}
               progressValue={78}
               color="purple"
             />
             <StatCard
               title="Active Users"
-              value={`+${activeUsers}`}
+              value={`+${stats.active_users}`}
               icon={<Users className="h-4 w-4 text-emerald-400 group-hover:rotate-12 transition-transform" />}
               progressValue={65}
               color="emerald"
             />
             <StatCard
               title="Blocked Attacks"
-              value={blockedAttacks}
+              value={stats.blocked_attacks}
               icon={<Lock className="h-4 w-4 text-pink-400 group-hover:rotate-12 transition-transform" />}
               progressValue={23}
               color="pink"
@@ -192,7 +188,7 @@ export default function DashboardPage() {
                 <CardTitle>Recent Threats</CardTitle>
               </CardHeader>
               <CardContent>
-                <ThreatTable />
+              <ThreatTable threats={MOCK_THREATS} />
               </CardContent>
             </Card>
           </div>

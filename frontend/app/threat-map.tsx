@@ -2,14 +2,7 @@
 
 import { useEffect, useRef } from "react"
 
-const DOTS = [
-  { x: 150, y: 100, color: "#3b82f6" }, // North America
-  { x: 450, y: 150, color: "#a855f7" }, // Europe
-  { x: 350, y: 200, color: "#ec4899" }, // Africa
-  { x: 550, y: 180, color: "#10b981" }, // Asia
-  { x: 650, y: 250, color: "#6366f1" }, // Australia
-  { x: 250, y: 280, color: "#f97316" }, // South America
-]
+import { DOTS } from "./data/security-data"
 
 export function ThreatMap() {
   const canvasRef = useRef<HTMLCanvasElement>(null)

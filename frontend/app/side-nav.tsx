@@ -14,16 +14,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 
-const navigation = [
-  { name: "Overview", href: "/", icon: Home, color: "text-blue-400" },
-  { name: "Threats", href: "/", icon: Shield, color: "text-purple-400" },
-  { name: "Network", href: "/", icon: Globe, color: "text-emerald-400" },
-  { name: "Analytics", href: "/", icon: BarChart3, color: "text-pink-400" },
-  { name: "Activity", href: "/", icon: Activity, color: "text-orange-400" },
-  { name: "Access", href: "/", icon: Lock, color: "text-cyan-400" },
-  { name: "Users", href: "/", icon: Users, color: "text-violet-400" },
-  { name: "Settings", href: "/", icon: Settings, color: "text-amber-400" },
-]
+import { NAVIGATION_ITEMS } from "./data/security-data"
 
 export function SideNav() {
   return (
@@ -39,14 +30,22 @@ export function SideNav() {
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel className="text-white text-sm font-medium">Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-white text-md font-medium">Navigation</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {navigation.map((item) => (
+                {NAVIGATION_ITEMS.map((item) => (
                   <SidebarMenuItem key={item.name}>
                     <SidebarMenuButton asChild className="hover:bg-gray-800/50 data-[active=true]:bg-gray-800">
                       <Link href={item.href}>
-                        <item.icon className={`h-4 w-4  ${item.color}`} />
+                        {/* Dynamically render the icon based on the icon name */}
+                        {item.icon === "Home" && <Home className={`h-4 w-4 ${item.color}`} />}
+                        {item.icon === "Shield" && <Shield className={`h-4 w-4 ${item.color}`} />}
+                        {item.icon === "Globe" && <Globe className={`h-4 w-4 ${item.color}`} />}
+                        {item.icon === "BarChart3" && <BarChart3 className={`h-4 w-4 ${item.color}`} />}
+                        {item.icon === "Activity" && <Activity className={`h-4 w-4 ${item.color}`} />}
+                        {item.icon === "Lock" && <Lock className={`h-4 w-4 ${item.color}`} />}
+                        {item.icon === "Users" && <Users className={`h-4 w-4 ${item.color}`} />}
+                        {item.icon === "Settings" && <Settings className={`h-4 w-4 ${item.color}`} />}
                         <span className="text-white">{item.name}</span>
                       </Link>
                     </SidebarMenuButton>

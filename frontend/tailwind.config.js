@@ -9,6 +9,7 @@ module.exports = withUt({
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
     "*.{js,ts,jsx,tsx,mdx}",
+    "./node_modules/@uploadthing/react/dist/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     container: {

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
-
+import {markers} from "./data/security-data"
 export function ThreatGlobe() {
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -77,11 +77,7 @@ export function ThreatGlobe() {
     const redMaterial = new THREE.MeshBasicMaterial({ color: "red" })
     const redGeometry = new THREE.SphereGeometry(0.1, 16, 16) // Small red dots
 
-    const markers = [
-      { x: 1, y: 2, z: 4 },  // Example coordinates
-      { x: -3, y: 1, z: -2 },
-      { x: 2, y: -2, z: 3 },
-    ]
+    
 
     markers.forEach(({ x, y, z }) => {
       const direction = new THREE.Vector3(x, y, z).normalize()

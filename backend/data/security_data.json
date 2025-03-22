@@ -1,0 +1,91 @@
+{
+  "stats": {
+    "total_threats": 8,
+    "blocked_attacks": 2,
+    "network_traffic": "365.9 MB",
+    "active_users": 1
+  },
+  "threats": [
+    {
+      "id": "threat-6531fac6",
+      "source": "20.42.65.85",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "blocked",
+      "timestamp": "2025-03-23T03:47:25.259111",
+      "details": "Ports targeted: 6"
+    },
+    {
+      "id": "threat-a61b9b2a",
+      "source": "185.125.190.56",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-23T03:47:42.052194",
+      "details": "Ports targeted: 6"
+    },
+    {
+      "id": "threat-d81b2dc3",
+      "source": "192.168.1.17",
+      "destination": "192.168.1.4",
+      "type": "ICMP Flood",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-23T03:49:07.840003",
+      "details": "ICMP requests: 51"
+    },
+    {
+      "id": "threat-40758639",
+      "source": "44.225.128.6",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-23T03:49:15.051808",
+      "details": "Ports targeted: 6"
+    },
+    {
+      "id": "threat-d4f3a0a9",
+      "source": "20.189.173.23",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "blocked",
+      "timestamp": "2025-03-23T03:49:21.889964",
+      "details": "Ports targeted: 6"
+    },
+    {
+      "id": "threat-7b83953c",
+      "source": "34.128.128.0",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-23T03:50:23.179663",
+      "details": "Ports targeted: 6"
+    },
+    {
+      "id": "threat-e4274653",
+      "source": "35.223.238.178",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-23T03:51:03.256272",
+      "details": "Ports targeted: 17"
+    },
+    {
+      "id": "threat-32928415",
+      "source": "192.168.1.1",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-23T03:51:19.027873",
+      "details": "Ports targeted: 42"
+    }
+  ],
+  "firewall_rules": []
+}

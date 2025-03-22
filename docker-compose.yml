@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  firewall:
+    build: ./firewall
+    container_name: demo_firewall
+    network_mode: "host"  # Necessary for accessing the Windows host
+    privileged: true      # Required for iptables
+    environment:
+      - BACKEND_HOST=host.docker.internal  # Maps to Windows localhost in Docker
+      - BACKEND_PORT=8000                  # Adjust to your backend's actual port
+
+networks:
+  custom_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: "192.168.1.0/24"
+          gateway: "192.168.1.1"

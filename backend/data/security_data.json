@@ -1,20 +1,30 @@
 {
   "stats": {
-    "total_threats": 1,
+    "total_threats": 2,
     "blocked_attacks": 0,
-    "network_traffic": "2.6 MB",
+    "network_traffic": "18.9 MB",
     "active_users": 1
   },
   "threats": [
     {
-      "id": "threat-e489f22c",
+      "id": "threat-b5eee3c2",
       "source": "192.168.1.12",
       "destination": "192.168.1.4",
       "type": "ICMP Flood",
       "severity": "medium",
       "status": "detected",
-      "timestamp": "2025-03-24T02:00:49.365191",
-      "details": "50 pings in 4.9s"
+      "timestamp": "2025-03-24T03:11:28.186446",
+      "details": "21 pings in 2.0s"
+    },
+    {
+      "id": "threat-5bea1c00",
+      "source": "192.168.1.6",
+      "destination": "192.168.1.4",
+      "type": "ICMP Flood",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-24T03:15:06.846109",
+      "details": "21 pings in 4.6s"
     }
   ],
   "firewall_rules": [],

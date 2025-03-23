@@ -1,6 +1,7 @@
 import logging
 import subprocess
 import random
+import time  # Added import for time.sleep
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
@@ -37,9 +38,14 @@ class FirewallManager:
                 return True
             except subprocess.CalledProcessError as e:
                 logger.error(f"Attempt {attempt + 1} failed: {str(e)} - {e.stderr}")
+                if "Bad rule" in e.stderr or "does a matching rule exist" in e.stderr:
+                    # Rule doesn’t exist, treat as success for deletion
+                    if "-D" in command:
+                        logger.info(f"No rule to delete in iptables for {command}, treating as success")
+                        return True
                 if attempt + 1 == retries:
                     return False
-                time.sleep(1)
+                time.sleep(1)  # Now works with time imported
         return False
 
     def _rule_exists(self, source_ip: str, action: str) -> bool:
@@ -129,7 +135,9 @@ class FirewallManager:
                 if iptables_success:
                     logger.info(f"Removed orphaned iptables rule for IP: {rule_id_or_ip}")
                     return True
-            return False
+            # If no rule in data or iptables, treat as success (idempotent)
+            logger.info(f"No rule to remove for {rule_id_or_ip}, treating as success")
+            return True
 
         source_ip = rule_to_remove["source_ip"]
         action = rule_to_remove["action"].lower()

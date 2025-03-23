@@ -59,9 +59,13 @@ class DataManager:
                     if update_stats:
                         threats = data.get("threats", [])
                         firewall_rules = data.get("firewall_rules", [])
+                        # Count blocked threats (threats with status "blocked")
+                        blocked_threats = [t for t in threats if t.get("status") == "blocked"]
                         stats = data.get("stats", {})
-                        stats["total_threats"] = len(threats)  # Raw total
+                        # Total threats = all threats + all rules - overlap of blocked threats
+                        stats["total_threats"] = len(threats) 
                         stats["blocked_attacks"] = len(firewall_rules)
+                        logger.info(stats["total_threats"])
                         data["stats"] = stats
                     self.cache = data
                     return data.copy()

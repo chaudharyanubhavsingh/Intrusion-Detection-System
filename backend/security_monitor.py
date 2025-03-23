@@ -54,7 +54,7 @@ class SecurityMonitor:
             threats = data.get("threats", [])
             firewall_rules = data.get("firewall_rules", [])
             stats = {
-                "total_threats": len(threats) + len(firewall_rules),
+                "total_threats": len(threats),
                 "blocked_attacks": len(firewall_rules),
                 "network_traffic": f"{(psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv) / 1024 / 1024:.1f} MB",
                 "active_users": len(psutil.users())

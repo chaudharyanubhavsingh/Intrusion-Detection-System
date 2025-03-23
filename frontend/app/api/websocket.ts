@@ -90,7 +90,7 @@ export const useWebSocket = (): UseWebSocketReturn => {
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // Include cookies if needed
+        credentials: "include",
       });
       if (!response.ok) {
         throw new Error(`HTTP error: ${response.status} - ${response.statusText}`);
@@ -125,7 +125,7 @@ export const useWebSocket = (): UseWebSocketReturn => {
         if (message.data.action === "block") {
           const updatedThreats = threats.map(t =>
             t.source === message.data.ip ? { ...t, status: "blocked" } : t
-          ).filter(t => t.status !== "blocked");
+          ); // Keep blocked threats in the list
           updateSecurityData({
             stats: message.data.stats,
             threats: updatedThreats,
@@ -143,7 +143,7 @@ export const useWebSocket = (): UseWebSocketReturn => {
         } else if (message.data.action === "unblock") {
           const updatedRules = firewallRules.filter(r => r.source_ip !== message.data.ip);
           const updatedThreats = message.data.threat
-            ? threats.filter(t => t.id !== message.data.threat.id).concat({ ...message.data.threat, status: "detected" })
+            ? threats.map(t => t.source === message.data.ip ? { ...t, status: "detected" } : t)
             : threats;
           updateSecurityData({
             stats: message.data.stats,

@@ -18,7 +18,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("cybersecurity-backend")
 
-# Define app once with all configurations
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -35,13 +34,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Cybersecurity Dashboard Backend", lifespan=lifespan)
 
-# Add CORS middleware after app definition but before routes
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Explicitly allow your frontend origin
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 data_manager = DataManager("data/security_data.json")
@@ -101,12 +99,6 @@ class WebSocketManager:
 
 websocket_manager = WebSocketManager()
 
-def adjust_stats(stats: Dict[str, Any], threats: list) -> Dict[str, Any]:
-    blocked_threats = sum(1 for t in threats if t.get("status") == "blocked")
-    adjusted_stats = stats.copy()
-    adjusted_stats["total_threats"] = max(0, stats["total_threats"] - blocked_threats)
-    return adjusted_stats
-
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     if not await websocket_manager.connect(websocket, client_id):
@@ -116,7 +108,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         initial_data = {
             "type": "initial_data",
             "data": {
-                "stats": adjust_stats(security_monitor.get_current_stats(), threats),
+                "stats": security_monitor.get_current_stats(),
                 "threats": threats,
                 "firewall_rules": firewall_manager.get_rules()
             }
@@ -146,8 +138,7 @@ async def root():
 
 @app.get("/stats")
 async def get_stats():
-    threats = security_monitor.get_recent_threats()
-    return adjust_stats(security_monitor.get_current_stats(), threats)
+    return security_monitor.get_current_stats()
 
 @app.get("/firewall/rules")
 async def get_firewall_rules():
@@ -159,11 +150,8 @@ async def add_firewall_rule(rule: FirewallRule):
     if success:
         data = data_manager.load_data()
         threats = data.get("threats", [])
-        stats = security_monitor.get_current_stats()
-        stats["total_threats"] = len(threats)
-        stats["blocked_attacks"] = len(firewall_manager.get_rules())
-        adjusted_stats = adjust_stats(stats, threats)
-        data_manager.update_stats(adjusted_stats)
+        stats = security_monitor.get_current_stats()  # Recalculates correctly
+        data_manager.update_stats(stats)
         if rule.action == "block":
             threat_to_update = next((t for t in threats if t["source"] == rule.source_ip), None)
             if threat_to_update:
@@ -177,7 +165,7 @@ async def add_firewall_rule(rule: FirewallRule):
                 "ip": rule.source_ip,
                 "destination_ip": rule.destination_ip,
                 "reason": rule.reason,
-                "stats": adjusted_stats
+                "stats": stats
             }
         })
         return {"success": True, "message": "Rule added successfully"}
@@ -194,11 +182,8 @@ async def delete_firewall_rule(ip: str):
     if success:
         data = data_manager.load_data()
         threats = data.get("threats", [])
-        stats = security_monitor.get_current_stats()
-        stats["total_threats"] = len(threats)
-        stats["blocked_attacks"] = len(firewall_manager.get_rules())
-        adjusted_stats = adjust_stats(stats, threats)
-        data_manager.update_stats(adjusted_stats)
+        stats = security_monitor.get_current_stats()  # Recalculate with new logic
+        data_manager.update_stats(stats)
         
         threat_to_update = next((t for t in threats if t["source"] == ip), None)
         if threat_to_update:
@@ -212,8 +197,8 @@ async def delete_firewall_rule(ip: str):
                 "action": "unblock",
                 "ip": ip,
                 "destination_ip": rule_to_remove["destination_ip"] if rule_to_remove else None,
-                "stats": adjusted_stats,
-                "threat": threat_to_update
+                "stats": stats,
+                "threat": threat_to_update if threat_to_update else None
             }
         })
         return {"success": True, "message": f"Rule for IP {ip} deleted"}

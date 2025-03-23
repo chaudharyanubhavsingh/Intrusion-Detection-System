@@ -83,6 +83,13 @@ class WebSocketManager:
 
 websocket_manager = WebSocketManager()
 
+# Helper function to adjust stats
+def adjust_stats(stats: Dict[str, Any], threats: list) -> Dict[str, Any]:
+    blocked_threats = sum(1 for t in threats if t.get("status") == "blocked")
+    adjusted_stats = stats.copy()
+    adjusted_stats["total_threats"] = max(0, stats["total_threats"] - blocked_threats)
+    return adjusted_stats
+
 @app.on_event("startup")
 async def startup_event():
     security_monitor.websocket_manager = websocket_manager
@@ -95,11 +102,12 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     if not await websocket_manager.connect(websocket, client_id):
         return
     try:
+        threats = security_monitor.get_recent_threats()
         initial_data = {
             "type": "initial_data",
             "data": {
-                "stats": security_monitor.get_current_stats(),
-                "threats": security_monitor.get_recent_threats(),
+                "stats": adjust_stats(security_monitor.get_current_stats(), threats),  # Adjust stats here
+                "threats": threats,
                 "firewall_rules": firewall_manager.get_rules()
             }
         }
@@ -128,7 +136,8 @@ async def root():
 
 @app.get("/stats")
 async def get_stats():
-    return security_monitor.get_current_stats()
+    threats = security_monitor.get_recent_threats()
+    return adjust_stats(security_monitor.get_current_stats(), threats)  # Adjust stats here
 
 @app.get("/firewall/rules")
 async def get_firewall_rules():
@@ -139,13 +148,15 @@ async def add_firewall_rule(rule: FirewallRule):
     success = firewall_manager.add_rule(rule.model_dump())
     if success:
         data = data_manager.load_data()
+        threats = data.get("threats", [])
         stats = {
-            "total_threats": len(data.get("threats", [])) + len(firewall_manager.get_rules()),
+            "total_threats": len(threats),  # Raw total before adjustment
             "blocked_attacks": len(firewall_manager.get_rules()),
             "network_traffic": security_monitor.get_current_stats()["network_traffic"],
             "active_users": security_monitor.get_current_stats()["active_users"]
         }
-        data_manager.update_stats(stats)
+        adjusted_stats = adjust_stats(stats, threats)  # Adjust stats here
+        data_manager.update_stats(adjusted_stats)
         await websocket_manager.broadcast({
             "type": "firewall_update",
             "data": {
@@ -153,7 +164,7 @@ async def add_firewall_rule(rule: FirewallRule):
                 "ip": rule.source_ip,
                 "destination_ip": rule.destination_ip,
                 "reason": rule.reason,
-                "stats": stats
+                "stats": adjusted_stats
             }
         })
         return {"success": True, "message": "Rule added successfully"}
@@ -169,13 +180,15 @@ async def delete_firewall_rule(ip: str):
     success = firewall_manager.remove_rule(ip)
     if success:
         data = data_manager.load_data()
+        threats = data.get("threats", [])
         stats = {
-            "total_threats": len(data.get("threats", [])) + len(firewall_manager.get_rules()),
+            "total_threats": len(threats),  # Raw total before adjustment
             "blocked_attacks": len(firewall_manager.get_rules()),
             "network_traffic": security_monitor.get_current_stats()["network_traffic"],
             "active_users": security_monitor.get_current_stats()["active_users"]
         }
-        data_manager.update_stats(stats)
+        adjusted_stats = adjust_stats(stats, threats)  # Adjust stats here
+        data_manager.update_stats(adjusted_stats)
         
         threat_to_update = next((t for t in threats if t["source"] == ip), None)
         if threat_to_update:
@@ -187,7 +200,7 @@ async def delete_firewall_rule(ip: str):
                 "action": "unblock",
                 "ip": ip,
                 "destination_ip": rule_to_remove["destination_ip"] if rule_to_remove else None,
-                "stats": stats,
+                "stats": adjusted_stats,
                 "threat": threat_to_update
             }
         })

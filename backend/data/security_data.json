@@ -1,81 +1,29 @@
 {
   "stats": {
-    "total_threats": 7,
+    "total_threats": 1,
     "blocked_attacks": 0,
-    "network_traffic": "44.7 MB",
+    "network_traffic": "2.6 MB",
     "active_users": 1
   },
   "threats": [
     {
-      "id": "threat-1058bf28",
-      "source": "35.223.238.178",
+      "id": "threat-e489f22c",
+      "source": "192.168.1.12",
       "destination": "192.168.1.4",
-      "type": "Port Scan",
+      "type": "ICMP Flood",
       "severity": "medium",
       "status": "detected",
-      "timestamp": "2025-03-23T23:43:25.992086",
-      "details": "Ports targeted: 6"
-    },
-    {
-      "id": "threat-85d3cc94",
-      "source": "192.168.1.1",
-      "destination": "192.168.1.4",
-      "type": "Port Scan",
-      "severity": "medium",
-      "status": "detected",
-      "timestamp": "2025-03-23T23:44:38.306521",
-      "details": "Ports targeted: 6"
-    },
-    {
-      "id": "threat-1a593a53",
-      "source": "185.125.190.58",
-      "destination": "192.168.1.4",
-      "type": "Port Scan",
-      "severity": "medium",
-      "status": "detected",
-      "timestamp": "2025-03-23T23:45:26.602923",
-      "details": "Ports targeted: 6"
-    },
-    {
-      "id": "threat-1361726e",
-      "source": "192.34.20.166",
-      "destination": "192.168.1.4",
-      "type": "Port Scan",
-      "severity": "medium",
-      "status": "detected",
-      "timestamp": "2025-03-23T23:47:18.491616",
-      "details": "Ports targeted: 6"
-    },
-    {
-      "id": "threat-b8ad8bf0",
-      "source": "20.189.173.3",
-      "destination": "192.168.1.4",
-      "type": "Port Scan",
-      "severity": "medium",
-      "status": "detected",
-      "timestamp": "2025-03-23T23:47:33.051003",
-      "details": "Ports targeted: 6"
-    },
-    {
-      "id": "threat-05937f0b",
-      "source": "35.223.238.178",
-      "destination": "192.168.1.4",
-      "type": "Port Scan",
-      "severity": "medium",
-      "status": "detected",
-      "timestamp": "2025-03-23T23:50:03.381727",
-      "details": "Ports targeted: 23"
-    },
-    {
-      "id": "threat-0352471d",
-      "source": "192.168.1.1",
-      "destination": "192.168.1.4",
-      "type": "Port Scan",
-      "severity": "medium",
-      "status": "detected",
-      "timestamp": "2025-03-23T23:50:04.373621",
-      "details": "Ports targeted: 48"
+      "timestamp": "2025-03-24T02:00:49.365191",
+      "details": "50 pings in 4.9s"
     }
   ],
-  "firewall_rules": []
+  "firewall_rules": [],
+  "system_health": {
+    "cpu_usage": 0,
+    "memory_usage": 0,
+    "disk_usage": 0,
+    "network_usage": 0
+  },
+  "alerts": [],
+  "scans": []
 }

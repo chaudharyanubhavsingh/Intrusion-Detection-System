@@ -7,15 +7,12 @@ from datetime import datetime
 logger = logging.getLogger("firewall-manager")
 
 class FirewallManager:
-    """Manages firewall rules within a Docker container"""
-    
     def __init__(self, data_manager, container_name: str = "demo_firewall"):
         self.data_manager = data_manager
         self.container_name = container_name
         self._check_container_status()
 
     def _check_container_status(self) -> None:
-        """Check if the Docker container is running"""
         try:
             result = subprocess.run(
                 ["docker", "inspect", "-f", "{{.State.Running}}", self.container_name],
@@ -31,19 +28,21 @@ class FirewallManager:
             logger.error(f"Failed to check container status: {str(e)}")
             raise RuntimeError(f"Cannot access container '{self.container_name}': {str(e)}")
 
-    def _execute_iptables_command(self, command: List[str]) -> bool:
-        """Execute an iptables command inside the Docker container"""
+    def _execute_iptables_command(self, command: List[str], retries=3) -> bool:
         docker_cmd = ["docker", "exec", self.container_name, "iptables"] + command
-        try:
-            result = subprocess.run(docker_cmd, check=True, capture_output=True, text=True)
-            logger.info(f"Executed iptables command: {' '.join(docker_cmd)}")
-            return True
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to execute iptables command: {str(e)} - {e.stderr}")
-            return False
+        for attempt in range(retries):
+            try:
+                result = subprocess.run(docker_cmd, check=True, capture_output=True, text=True)
+                logger.info(f"Executed iptables command: {' '.join(docker_cmd)}")
+                return True
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Attempt {attempt + 1} failed: {str(e)} - {e.stderr}")
+                if attempt + 1 == retries:
+                    return False
+                time.sleep(1)
+        return False
 
     def _rule_exists(self, source_ip: str, action: str) -> bool:
-        """Check if a rule with the given source IP and action exists in iptables"""
         try:
             result = subprocess.run(
                 ["docker", "exec", self.container_name, "iptables", "-L", "INPUT", "-n", "--line-numbers"],
@@ -61,18 +60,15 @@ class FirewallManager:
             return False
 
     def _remove_conflicting_rule(self, source_ip: str, conflicting_action: str) -> bool:
-        """Remove a conflicting rule for the same source IP"""
         conflicting_target = "ACCEPT" if conflicting_action in ("allow", "accept") else "DROP"
         iptables_cmd = ["-D", "INPUT", "-s", source_ip, "-j", conflicting_target]
         return self._execute_iptables_command(iptables_cmd)
 
     def get_rules(self) -> List[Dict[str, Any]]:
-        """Get current firewall rules from the data store"""
-        data = self.data_manager.load_data()
+        data = self.data_manager.load_data(update_stats=False)
         return data.get("firewall_rules", [])
 
     def add_rule(self, rule: Dict[str, Any]) -> bool:
-        """Add a new firewall rule to the Docker container, avoiding conflicts"""
         if "source_ip" not in rule or "action" not in rule:
             logger.error("Invalid firewall rule: missing required fields")
             return False
@@ -117,22 +113,16 @@ class FirewallManager:
             logger.error(f"Failed to save rule to data store: {rule}")
             return False
 
-        if normalized_action == "block":
-            self._update_threat_status(rule["source_ip"], "blocked")
-
         logger.info(f"Successfully added rule: {rule}")
         return True
 
     def remove_rule(self, rule_id_or_ip: str) -> bool:
-        """Remove a firewall rule by ID or IP from the Docker container"""
-        data = self.data_manager.load_data()
+        data = self.data_manager.load_data(update_stats=False)
         rules = data.get("firewall_rules", [])
         
-        # Find rule by ID or source_ip
         rule_to_remove = next((r for r in rules if r.get("id") == rule_id_or_ip or r.get("source_ip") == rule_id_or_ip), None)
         if not rule_to_remove:
             logger.warning(f"No rule found in data store for ID or IP: {rule_id_or_ip}")
-            # Check iptables directly as a fallback
             if self._rule_exists(rule_id_or_ip, "block"):
                 iptables_cmd = ["-D", "INPUT", "-s", rule_id_or_ip, "-j", "DROP"]
                 iptables_success = self._execute_iptables_command(iptables_cmd)
@@ -156,20 +146,10 @@ class FirewallManager:
             logger.error(f"Failed to remove rule from data store for {source_ip}")
             return False
 
-        self._update_threat_status(source_ip, "detected")
-        logger.info(f"Successfully removed rule and updated threat status for: {source_ip}")
+        logger.info(f"Successfully removed rule for: {source_ip}")
         return True
 
-    def _update_threat_status(self, ip: str, status: str) -> None:
-        """Update the status of threats from a specific IP"""
-        data = self.data_manager.load_data()
-        threats = data.get("threats", [])
-        for threat in threats:
-            if threat.get("source") == ip and threat.get("status") != status:
-                self.data_manager.update_threat(threat["id"], {"status": status})
-
     def apply_rules(self) -> bool:
-        """Apply all stored rules to the Docker container firewall"""
         self._execute_iptables_command(["-F", "INPUT"])
         rules = self.get_rules()
         for rule in rules:
@@ -185,7 +165,6 @@ class FirewallManager:
         return True
 
     def get_firewall_status(self) -> Dict[str, Any]:
-        """Get the current status of the firewall in the Docker container"""
         try:
             result = subprocess.run(
                 ["docker", "exec", self.container_name, "iptables", "-L", "INPUT", "-n", "--line-numbers"],

@@ -5,6 +5,7 @@ import asyncio
 import logging
 from datetime import datetime
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 
 from security_monitor import SecurityMonitor
 from firewall_manager import FirewallManager
@@ -17,14 +18,30 @@ logging.basicConfig(
 )
 logger = logging.getLogger("cybersecurity-backend")
 
-app = FastAPI(title="Cybersecurity Dashboard Backend")
+# Define app once with all configurations
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    data_manager.reset_data()
+    security_monitor.websocket_manager = websocket_manager
+    logger.info("WebSocket manager linked to SecurityMonitor")
+    firewall_manager.apply_rules()
+    asyncio.create_task(security_monitor.start_live_monitoring())
+    asyncio.create_task(websocket_manager.heartbeat())
+    yield
+    # Shutdown
+    websocket_manager.shutdown_event.set()
+    logger.info("Application shutdown complete")
 
+app = FastAPI(title="Cybersecurity Dashboard Backend", lifespan=lifespan)
+
+# Add CORS middleware after app definition but before routes
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000"],  # Explicitly allow your frontend origin
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
 )
 
 data_manager = DataManager("data/security_data.json")
@@ -43,6 +60,7 @@ class WebSocketManager:
     def __init__(self):
         self.clients: Dict[str, WebSocket] = {}
         self.max_clients = 10
+        self.shutdown_event = asyncio.Event()
 
     async def connect(self, websocket: WebSocket, client_id: str):
         if client_id in self.clients:
@@ -64,7 +82,7 @@ class WebSocketManager:
 
     async def broadcast(self, message: Dict[str, Any]):
         disconnected = []
-        for client_id, ws in self.clients.items():
+        for client_id, ws in list(self.clients.items()):
             try:
                 await ws.send_json(message)
                 logger.debug(f"Sent message to {client_id}: {message}")
@@ -75,7 +93,7 @@ class WebSocketManager:
             await self.disconnect(client_id)
 
     async def heartbeat(self):
-        while True:
+        while not self.shutdown_event.is_set():
             await asyncio.sleep(5)
             if self.clients:
                 await self.broadcast({"type": "heartbeat"})
@@ -83,19 +101,11 @@ class WebSocketManager:
 
 websocket_manager = WebSocketManager()
 
-# Helper function to adjust stats
 def adjust_stats(stats: Dict[str, Any], threats: list) -> Dict[str, Any]:
     blocked_threats = sum(1 for t in threats if t.get("status") == "blocked")
     adjusted_stats = stats.copy()
     adjusted_stats["total_threats"] = max(0, stats["total_threats"] - blocked_threats)
     return adjusted_stats
-
-@app.on_event("startup")
-async def startup_event():
-    security_monitor.websocket_manager = websocket_manager
-    logger.info("WebSocket manager linked to SecurityMonitor")
-    asyncio.create_task(security_monitor.start_live_monitoring())
-    asyncio.create_task(websocket_manager.heartbeat())
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
@@ -106,7 +116,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         initial_data = {
             "type": "initial_data",
             "data": {
-                "stats": adjust_stats(security_monitor.get_current_stats(), threats),  # Adjust stats here
+                "stats": adjust_stats(security_monitor.get_current_stats(), threats),
                 "threats": threats,
                 "firewall_rules": firewall_manager.get_rules()
             }
@@ -137,7 +147,7 @@ async def root():
 @app.get("/stats")
 async def get_stats():
     threats = security_monitor.get_recent_threats()
-    return adjust_stats(security_monitor.get_current_stats(), threats)  # Adjust stats here
+    return adjust_stats(security_monitor.get_current_stats(), threats)
 
 @app.get("/firewall/rules")
 async def get_firewall_rules():
@@ -149,14 +159,17 @@ async def add_firewall_rule(rule: FirewallRule):
     if success:
         data = data_manager.load_data()
         threats = data.get("threats", [])
-        stats = {
-            "total_threats": len(threats),  # Raw total before adjustment
-            "blocked_attacks": len(firewall_manager.get_rules()),
-            "network_traffic": security_monitor.get_current_stats()["network_traffic"],
-            "active_users": security_monitor.get_current_stats()["active_users"]
-        }
-        adjusted_stats = adjust_stats(stats, threats)  # Adjust stats here
+        stats = security_monitor.get_current_stats()
+        stats["total_threats"] = len(threats)
+        stats["blocked_attacks"] = len(firewall_manager.get_rules())
+        adjusted_stats = adjust_stats(stats, threats)
         data_manager.update_stats(adjusted_stats)
+        if rule.action == "block":
+            threat_to_update = next((t for t in threats if t["source"] == rule.source_ip), None)
+            if threat_to_update:
+                threat_to_update["status"] = "blocked"
+                data["threats"] = threats
+                data_manager.save_data(data)
         await websocket_manager.broadcast({
             "type": "firewall_update",
             "data": {
@@ -181,18 +194,17 @@ async def delete_firewall_rule(ip: str):
     if success:
         data = data_manager.load_data()
         threats = data.get("threats", [])
-        stats = {
-            "total_threats": len(threats),  # Raw total before adjustment
-            "blocked_attacks": len(firewall_manager.get_rules()),
-            "network_traffic": security_monitor.get_current_stats()["network_traffic"],
-            "active_users": security_monitor.get_current_stats()["active_users"]
-        }
-        adjusted_stats = adjust_stats(stats, threats)  # Adjust stats here
+        stats = security_monitor.get_current_stats()
+        stats["total_threats"] = len(threats)
+        stats["blocked_attacks"] = len(firewall_manager.get_rules())
+        adjusted_stats = adjust_stats(stats, threats)
         data_manager.update_stats(adjusted_stats)
         
         threat_to_update = next((t for t in threats if t["source"] == ip), None)
         if threat_to_update:
             threat_to_update["status"] = "detected"
+            data["threats"] = threats
+            data_manager.save_data(data)
         
         await websocket_manager.broadcast({
             "type": "firewall_update",

@@ -85,10 +85,19 @@ export const useWebSocket = (): UseWebSocketReturn => {
 
   const fetchRecentThreats = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/threats/recent`);
-      if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      const response = await fetch(`${API_BASE_URL}/api/threats/recent`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // Include cookies if needed
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status} - ${response.statusText}`);
+      }
       const newThreats: Threat[] = await response.json();
       updateSecurityData({ threats: newThreats });
+      console.log("Fetched recent threats:", newThreats);
     } catch (error) {
       console.error("Failed to fetch threats:", error);
     }

@@ -24,27 +24,14 @@ interface CombinedEntry {
 
 export function ThreatTable({ threats: initialThreats = [] }: ThreatTableProps) {
   const [loading, setLoading] = useState<Record<string, boolean>>({});
-  const { threats, firewallRules, blockIp, unblockIp, updateSecurityData } = useWebSocket();
+  const { threats, firewallRules, blockIp, unblockIp, stats } = useWebSocket();
 
-  console.log("Firewall Rules from WebSocket:", firewallRules);
+  console.log("Threats:", threats, "Firewall Rules:", firewallRules, "Stats:", stats);
 
-  // Create a set of blocked IPs from firewall rules for quick lookup
   const blockedIps = new Set(firewallRules.map((rule) => rule.source_ip));
-
-  // Separate threats and firewall rules (so firewall rules always appear at bottom)
   const activeThreats = threats
     .filter((threat) => !blockedIps.has(threat.source))
-    .map((threat) => ({
-      id: threat.id,
-      source: threat.source,
-      destination: threat.destination,
-      type: threat.type,
-      severity: threat.severity,
-      status: "detected" as const,
-      timestamp: threat.timestamp,
-      isRule: false,
-    }));
-
+    .map((threat) => ({ ...threat, isRule: false }));
   const firewallEntries = firewallRules.map((rule) => ({
     id: rule.id,
     source: rule.source_ip,
@@ -56,40 +43,16 @@ export function ThreatTable({ threats: initialThreats = [] }: ThreatTableProps) 
     isRule: true,
   }));
 
-  // Sort threats (latest first), keep firewall entries at the bottom
-  activeThreats.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  firewallEntries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const combinedEntries = [
+    ...activeThreats.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
+    ...firewallEntries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
+  ];
 
-  // Final table data (active threats first, then firewall rules)
-  const combinedEntries = [...activeThreats, ...firewallEntries];
-
-  const handleBlock = async (ip: string, id: string) => {
+  const handleBlock = async (ip: string, destination: string, id: string) => {
     setLoading((prev) => ({ ...prev, [id]: true }));
-
     try {
-      const result = await blockIp(ip, "Manually blocked from dashboard");
-
+      const result = await blockIp(ip, destination, "Manually blocked from dashboard");
       if (!result.success) throw new Error("Failed to block IP");
-
-      // Find the original threat to get the correct destination IP
-      const threat = threats.find((t) => t.source === ip);
-      const destinationIp = threat ? threat.destination : "Unknown";
-
-      // Update UI in real-time without refresh
-      updateSecurityData({
-        threats: threats.filter((t) => t.source !== ip), // Remove from active threats
-        firewallRules: [
-          ...firewallRules,
-          {
-            id: `rule-${Date.now()}`, // Fixed template literal
-            source_ip: ip,
-            destination_ip: destinationIp,
-            action: "block",
-            reason: "Manually blocked",
-            timestamp: new Date().toISOString(),
-          },
-        ],
-      });
     } catch (error) {
       console.error("Error blocking IP:", error);
     } finally {
@@ -99,28 +62,9 @@ export function ThreatTable({ threats: initialThreats = [] }: ThreatTableProps) 
 
   const handleUnblock = async (ip: string, id: string) => {
     setLoading((prev) => ({ ...prev, [id]: true }));
-
     try {
       const result = await unblockIp(ip);
-
       if (!result.success) throw new Error("Failed to unblock IP");
-
-      // Update UI in real-time without refresh
-      updateSecurityData({
-        firewallRules: firewallRules.filter((rule) => rule.source_ip !== ip),
-        threats: [
-          ...threats,
-          {
-            id: `threat-${Date.now()}`, // Fixed template literal
-            source: ip,
-            destination: "Unknown",
-            type: "Previously Blocked",
-            severity: "medium",
-            status: "detected",
-            timestamp: new Date().toISOString(),
-          },
-        ],
-      });
     } catch (error) {
       console.error("Error unblocking IP:", error);
     } finally {
@@ -173,7 +117,7 @@ export function ThreatTable({ threats: initialThreats = [] }: ThreatTableProps) 
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-1 h-7 text-xs text-rose-400"
-                    onClick={() => handleBlock(entry.source, entry.id)}
+                    onClick={() => handleBlock(entry.source, entry.destination, entry.id)}
                     disabled={loading[entry.id]}
                   >
                     <Shield className="h-3 w-3" />

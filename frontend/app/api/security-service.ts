@@ -3,7 +3,6 @@ import {
   type SecurityStats,
   type Threat,
   type FirewallRule,
-  type ScanResult,
 } from "../data/security-data";
 
 export const securityApi = {
@@ -14,7 +13,7 @@ export const securityApi = {
   },
 
   async getThreats(limit = 10): Promise<Threat[]> {
-    const response = await fetch(`${API_BASE_URL}/threats?limit=${limit}`);
+    const response = await fetch(`${API_BASE_URL}/api/threats/recent`); // Updated to match main.py
     if (!response.ok) throw new Error("Failed to fetch threats");
     return await response.json();
   },
@@ -43,6 +42,7 @@ export const securityApi = {
     return await response.json();
   },
 
+  
   async startScan(scanType: "quick" | "full" | "custom", targetIps?: string[]): Promise<{ scan_id: string }> {
     const response = await fetch(`${API_BASE_URL}/scan`, {
       method: "POST",

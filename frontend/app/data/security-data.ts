@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 
-// Type definitions
 export interface Threat {
   id: string;
   source: string;
@@ -12,14 +11,15 @@ export interface Threat {
   severity: "low" | "medium" | "high";
   status: "detected" | "blocked";
   timestamp: string;
+  details?: string;
 }
 
 export interface FirewallRule {
   id: string;
   source_ip: string;
-  destination_ip?: string;
-  port?: number;
-  protocol?: string;
+  destination_ip?: string | null;
+  port?: number | null;
+  protocol?: string | null;
   action: "allow" | "block";
   reason?: string;
   timestamp: string;
@@ -30,16 +30,6 @@ export interface SecurityStats {
   blocked_attacks: number;
   network_traffic: string;
   active_users: number;
-}
-
-export interface ScanResult {
-  id: string;
-  type: string;
-  status: "running" | "completed" | "failed";
-  progress: number;
-  start_time: string;
-  end_time?: string;
-  results: Threat[];
 }
 
 export interface SystemHealth {
@@ -56,11 +46,9 @@ export interface NavigationItem {
   color: string;
 }
 
-// Base URLs
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-export const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://192.168.1.4:8000";
+export const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://192.168.1.4:8000/ws";
 
-// Zustand store for security data
 interface SecurityState {
   connected: boolean;
   stats: SecurityStats;
@@ -85,20 +73,27 @@ export const useSecurityData = create<SecurityState>((set) => ({
     memory_usage: 0,
     disk_usage: 0,
     network_usage: 0,
-  },updateSecurityData: (data) => set((state) => {
-    const newState = { ...state, ...data };
-    console.log("Security data updated:", newState); // Debug state changes
+  },
+  updateSecurityData: (data) => set((state) => {
+    const newState = {
+      ...state,
+      ...data,
+      stats: data.stats ? { ...state.stats, ...data.stats } : state.stats,
+      threats: data.threats || state.threats,
+      firewallRules: data.firewallRules || state.firewallRules,
+      systemHealth: data.systemHealth ? { ...state.systemHealth, ...data.systemHealth } : state.systemHealth,
+    };
+    console.log("Security data updated:", newState);
     return newState;
   }),
 }));
 
-// API Functions
-export async function blockIp(ip: string, reason?: string): Promise<{ success: boolean }> {
+export async function blockIp(ip: string, destinationIp?: string, reason?: string): Promise<{ success: boolean }> {
   try {
     const response = await fetch(`${API_BASE_URL}/firewall/rules`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source_ip: ip, action: "block", reason }),
+      body: JSON.stringify({ source_ip: ip, destination_ip: destinationIp, action: "block", reason }),
     });
     if (!response.ok) throw new Error(`Failed to block IP: ${response.statusText}`);
     return await response.json();
@@ -110,32 +105,35 @@ export async function blockIp(ip: string, reason?: string): Promise<{ success: b
 
 export async function unblockIp(ip: string): Promise<{ success: boolean }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/firewall/rules/${ip}`, {
+    const response = await fetch(`${API_BASE_URL}/firewall/rules/${encodeURIComponent(ip)}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
     });
     if (!response.ok) throw new Error(`Failed to unblock IP: ${response.statusText}`);
-    return await response.json();
+    const result = await response.json();
+    return result;
   } catch (error) {
     console.error("Error unblocking IP:", error);
     return { success: false };
   }
 }
+// Removed unused code for brevity
 
-export async function startScan(scanType: "quick" | "full" | "custom", targetIps?: string[]): Promise<{ scan_id: string }> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/scan`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scan_type: scanType, target_ips: targetIps }),
-    });
-    if (!response.ok) throw new Error(`Failed to start scan: ${response.statusText}`);
-    return await response.json();
-  } catch (error) {
-    console.error("Error starting scan:", error);
-    return { scan_id: "" };
-  }
-}
+// Remove startScan if not implemented in backend
+// export async function startScan(scanType: "quick" | "full" | "custom", targetIps?: string[]): Promise<{ scan_id: string }> {
+//   try {
+//     const response = await fetch(`${API_BASE_URL}/scan`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ scan_type: scanType, target_ips: targetIps }),
+//     });
+//     if (!response.ok) throw new Error(`Failed to start scan: ${response.statusText}`);
+//     return await response.json();
+//   } catch (error) {
+//     console.error("Error starting scan:", error);
+//     return { scan_id: "" };
+//   }
+// }
 
 // Static Mock Data (optional, only for development)
 export const MOCK_THREATS: Threat[] = [
@@ -160,8 +158,8 @@ export const MOCK_THREATS: Threat[] = [
 ];
 
 export const MOCK_STATS: SecurityStats = {
-  total_threats: 2543,
-  blocked_attacks: 89,
+  total_threats: 2,
+  blocked_attacks: 1,
   network_traffic: "1.2 TB",
   active_users: 573,
 };

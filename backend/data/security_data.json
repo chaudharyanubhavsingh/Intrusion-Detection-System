@@ -1,91 +1,81 @@
 {
-  "stats": {
-    "total_threats": 8,
-    "blocked_attacks": 2,
-    "network_traffic": "365.9 MB",
-    "active_users": 1
-  },
   "threats": [
     {
-      "id": "threat-6531fac6",
-      "source": "20.42.65.85",
-      "destination": "192.168.1.4",
-      "type": "Port Scan",
-      "severity": "medium",
-      "status": "blocked",
-      "timestamp": "2025-03-23T03:47:25.259111",
-      "details": "Ports targeted: 6"
-    },
-    {
-      "id": "threat-a61b9b2a",
-      "source": "185.125.190.56",
+      "id": "threat-7146f99b",
+      "source": "52.182.143.215",
       "destination": "192.168.1.4",
       "type": "Port Scan",
       "severity": "medium",
       "status": "detected",
-      "timestamp": "2025-03-23T03:47:42.052194",
+      "timestamp": "2025-03-23T16:09:58.124957",
       "details": "Ports targeted: 6"
     },
     {
-      "id": "threat-d81b2dc3",
-      "source": "192.168.1.17",
-      "destination": "192.168.1.4",
-      "type": "ICMP Flood",
-      "severity": "medium",
-      "status": "detected",
-      "timestamp": "2025-03-23T03:49:07.840003",
-      "details": "ICMP requests: 51"
-    },
-    {
-      "id": "threat-40758639",
-      "source": "44.225.128.6",
-      "destination": "192.168.1.4",
-      "type": "Port Scan",
-      "severity": "medium",
-      "status": "detected",
-      "timestamp": "2025-03-23T03:49:15.051808",
-      "details": "Ports targeted: 6"
-    },
-    {
-      "id": "threat-d4f3a0a9",
-      "source": "20.189.173.23",
-      "destination": "192.168.1.4",
-      "type": "Port Scan",
-      "severity": "medium",
-      "status": "blocked",
-      "timestamp": "2025-03-23T03:49:21.889964",
-      "details": "Ports targeted: 6"
-    },
-    {
-      "id": "threat-7b83953c",
-      "source": "34.128.128.0",
-      "destination": "192.168.1.4",
-      "type": "Port Scan",
-      "severity": "medium",
-      "status": "detected",
-      "timestamp": "2025-03-23T03:50:23.179663",
-      "details": "Ports targeted: 6"
-    },
-    {
-      "id": "threat-e4274653",
+      "id": "threat-502340d8",
       "source": "35.223.238.178",
       "destination": "192.168.1.4",
       "type": "Port Scan",
       "severity": "medium",
       "status": "detected",
-      "timestamp": "2025-03-23T03:51:03.256272",
-      "details": "Ports targeted: 17"
+      "timestamp": "2025-03-23T16:11:01.221606",
+      "details": "Ports targeted: 6"
     },
     {
-      "id": "threat-32928415",
+      "id": "threat-2ee220e3",
       "source": "192.168.1.1",
       "destination": "192.168.1.4",
       "type": "Port Scan",
       "severity": "medium",
       "status": "detected",
-      "timestamp": "2025-03-23T03:51:19.027873",
-      "details": "Ports targeted: 42"
+      "timestamp": "2025-03-23T16:11:32.671400",
+      "details": "Ports targeted: 6"
+    },
+    {
+      "id": "threat-1f7ca65c",
+      "source": "91.189.91.157",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-23T16:13:05.615277",
+      "details": "Ports targeted: 6"
+    },
+    {
+      "id": "threat-5b89f734",
+      "source": "35.223.238.178",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-23T16:17:00.553522",
+      "details": "Ports targeted: 20"
+    },
+    {
+      "id": "threat-e4a55e3c",
+      "source": "192.168.1.1",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-23T16:17:55.136252",
+      "details": "Ports targeted: 57"
+    },
+    {
+      "id": "threat-a5f0adf0",
+      "source": "34.128.128.0",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-23T16:18:19.596611",
+      "details": "Ports targeted: 6"
     }
   ],
+  "stats": {
+    "total_threats": 7,
+    "blocked_attacks": 0,
+    "network_traffic": "51.5 MB",
+    "active_users": 1
+  },
   "firewall_rules": []
 }

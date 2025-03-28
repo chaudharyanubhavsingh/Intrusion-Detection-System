@@ -17,9 +17,10 @@ class SecurityMonitor:
         self.network_interface = self._get_default_interface()
         self.local_ip = self._get_local_ip()
         self.packet_counts = {}  # Per-source tracking
-        self.reported_threats = {}
+        self.reported_threats = {}  # Tracks reported threats with timestamps
         self.websocket_manager = None
         self.loop = asyncio.get_event_loop()
+        self.is_locked_down = False
         logger.info(f"All network interfaces: {psutil.net_if_addrs()}")
         logger.info(f"Initialized with interface: {self.network_interface}, local IP: {self.local_ip}")
 
@@ -74,6 +75,10 @@ class SecurityMonitor:
 
     def _sniff_packets_continuously(self):
         while True:
+            if self.is_locked_down:
+                logger.info("System in lockdown, pausing packet sniffing")
+                time.sleep(5)
+                continue
             try:
                 logger.info(f"Starting packet sniffing on {self.network_interface} with filter 'dst host {self.local_ip}'")
                 sniff(
@@ -81,7 +86,7 @@ class SecurityMonitor:
                     prn=self._analyze_packet,
                     filter=f"dst host {self.local_ip}",
                     store=0,
-                    timeout=300  # 5 minutes, per your last tweak
+                    timeout=300
                 )
                 logger.info("Sniffing stopped, restarting after timeout or interruption")
             except Exception as e:
@@ -89,6 +94,9 @@ class SecurityMonitor:
                 time.sleep(5)
 
     def _analyze_packet(self, pkt):
+        if self.is_locked_down:
+            logger.debug("Ignoring packet: system is in lockdown")
+            return
         try:
             logger.debug(f"Raw packet: {pkt.summary()}")
             if IP not in pkt:
@@ -107,9 +115,9 @@ class SecurityMonitor:
 
             if src_ip not in self.packet_counts:
                 self.packet_counts[src_ip] = {
-                    "times": deque(maxlen=50),  # Larger window for sustained checks
-                    "ports": defaultdict(int),  # Count port hits
-                    "syn_counts": defaultdict(int),  # Per-port SYN counts
+                    "times": deque(maxlen=50),
+                    "ports": defaultdict(int),
+                    "syn_counts": defaultdict(int),
                     "icmp_times": deque(maxlen=50),
                     "packet_count": 0,
                     "last_reset": current_time
@@ -119,7 +127,6 @@ class SecurityMonitor:
             stats["times"].append(current_time)
             stats["packet_count"] += 1
 
-            # Reset if inactive for 5 minutes
             if current_time - stats["last_reset"] > 300:
                 stats["times"].clear()
                 stats["ports"].clear()
@@ -128,7 +135,7 @@ class SecurityMonitor:
                 stats["last_reset"] = current_time
                 logger.debug(f"Reset counters for {src_ip} due to inactivity")
 
-            # DDoS: >20 pps sustained over 10+ seconds
+            # DDoS Detection
             if len(stats["times"]) > 10:  # At least 10 packets
                 time_span = stats["times"][-1] - stats["times"][0]
                 packet_rate = len(stats["times"]) / (time_span if time_span > 0 else 1)
@@ -137,7 +144,7 @@ class SecurityMonitor:
                     threat = self._create_threat(src_ip, "DDoS", "high", f"Sustained rate: {packet_rate:.2f} pps over {time_span:.1f}s")
                     self._report_threat(threat, threat_key)
 
-            # Port Scan: >5 unique ports in <5 seconds
+            # Port Scan Detection
             if TCP in pkt or UDP in pkt:
                 port = pkt[TCP].dport if TCP in pkt else pkt[UDP].dport
                 stats["ports"][port] += 1
@@ -148,7 +155,7 @@ class SecurityMonitor:
                         threat = self._create_threat(src_ip, "Port Scan", "medium", f"Hit {len(stats['ports'])} ports in {time_span:.1f}s")
                         self._report_threat(threat, threat_key)
 
-            # Brute Force: >10 SYNs to same port in <10 seconds
+            # Brute Force Detection
             if TCP in pkt and pkt[TCP].flags == "S":
                 port = pkt[TCP].dport
                 stats["syn_counts"][port] += 1
@@ -159,7 +166,7 @@ class SecurityMonitor:
                         threat = self._create_threat(src_ip, "Brute Force", "medium", f"{stats['syn_counts'][port]} SYNs to port {port} in {time_span:.1f}s")
                         self._report_threat(threat, threat_key)
 
-            # ICMP Flood: >20 pings in <5 seconds
+            # ICMP Flood Detection
             if pkt.haslayer(ICMP) and pkt[ICMP].type == 8:
                 stats["icmp_times"].append(current_time)
                 threat_key = f"{src_ip}:ICMPFlood"
@@ -169,7 +176,6 @@ class SecurityMonitor:
                         threat = self._create_threat(src_ip, "ICMP Flood", "medium", f"{len(stats['icmp_times'])} pings in {time_span:.1f}s")
                         self._report_threat(threat, threat_key)
 
-            # Cleanup every minute
             if int(current_time) % 60 == 0:
                 self._cleanup_threats(current_time)
 
@@ -200,7 +206,8 @@ class SecurityMonitor:
             self.data_manager.add_threat(threat)
             data = self.data_manager.load_data()
             stats = data.get("stats", {})
-            stats["total_threats"] = len(data.get("threats", [])) + len(data.get("firewall_rules", []))
+            stats["total_threats"] = len(data.get("threats", []))
+            stats["blocked_attacks"] = len(data.get("firewall_rules", []))
             self.data_manager.update_stats(stats)
 
             if self.websocket_manager is None:
@@ -227,13 +234,26 @@ class SecurityMonitor:
                 ip: stats for ip, stats in self.packet_counts.items()
                 if current_time - stats["last_reset"] < 300
             }
+            # Keep reported_threats indefinitely unless reset
             self.reported_threats = {
                 k: v for k, v in self.reported_threats.items()
                 if current_time - v < 300
             }
-            logger.debug("Cleaned up old packet counts and threats")
+            logger.debug("Cleaned up old packet counts")
         except Exception as e:
             logger.error(f"Error cleaning up threats: {str(e)}")
+
+    def reset_monitoring(self):
+        try:
+            self.packet_counts.clear()
+            self.reported_threats.clear()
+            logger.info("Monitoring reset, restarting packet sniffing")
+        except Exception as e:
+            logger.error(f"Error resetting monitoring: {str(e)}")
+
+    def set_lockdown_state(self, is_locked: bool):
+        self.is_locked_down = is_locked
+        logger.info(f"Lockdown state updated to: {is_locked}")
 
     def get_recent_threats(self, limit: int = 10) -> List[Dict[str, Any]]:
         try:

@@ -1,30 +1,50 @@
 {
   "stats": {
-    "total_threats": 2,
+    "total_threats": 4,
     "blocked_attacks": 0,
-    "network_traffic": "18.9 MB",
+    "network_traffic": "88.6 MB",
     "active_users": 1
   },
   "threats": [
     {
-      "id": "threat-b5eee3c2",
-      "source": "192.168.1.12",
-      "destination": "192.168.1.4",
-      "type": "ICMP Flood",
-      "severity": "medium",
-      "status": "detected",
-      "timestamp": "2025-03-24T03:11:28.186446",
-      "details": "21 pings in 2.0s"
-    },
-    {
-      "id": "threat-5bea1c00",
+      "id": "threat-1c2d5033",
       "source": "192.168.1.6",
       "destination": "192.168.1.4",
       "type": "ICMP Flood",
       "severity": "medium",
       "status": "detected",
-      "timestamp": "2025-03-24T03:15:06.846109",
-      "details": "21 pings in 4.6s"
+      "timestamp": "2025-03-29T03:01:48.080865",
+      "details": "21 pings in 4.7s"
+    },
+    {
+      "id": "threat-0344671d",
+      "source": "192.168.1.19",
+      "destination": "192.168.1.4",
+      "type": "ICMP Flood",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-29T03:02:59.462928",
+      "details": "21 pings in 2.0s"
+    },
+    {
+      "id": "threat-28333051",
+      "source": "35.223.238.178",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-29T03:05:06.024237",
+      "details": "Hit 40 ports in 0.3s"
+    },
+    {
+      "id": "threat-c396f2db",
+      "source": "192.34.20.166",
+      "destination": "192.168.1.4",
+      "type": "Port Scan",
+      "severity": "medium",
+      "status": "detected",
+      "timestamp": "2025-03-29T03:06:24.561285",
+      "details": "Hit 21 ports in 2.3s"
     }
   ],
   "firewall_rules": [],

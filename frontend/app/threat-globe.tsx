@@ -3,8 +3,20 @@
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
-import {markers} from "./data/security-data"
-export function ThreatGlobe() {
+interface Marker {
+  x: number;
+  y: number;
+  z: number;
+  status: string;
+  color: string;
+  id: string;
+}
+
+interface ThreatGlobeProps {
+  markers: Marker[];
+}
+
+export const ThreatGlobe: React.FC<ThreatGlobeProps> = ({ markers }) =>{
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

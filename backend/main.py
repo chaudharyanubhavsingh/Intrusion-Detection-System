@@ -20,7 +20,6 @@ logger = logging.getLogger("cybersecurity-backend")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     data_manager.reset_data()
     security_monitor.websocket_manager = websocket_manager
     logger.info("WebSocket manager linked to SecurityMonitor")
@@ -28,7 +27,6 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(security_monitor.start_live_monitoring())
     asyncio.create_task(websocket_manager.heartbeat())
     yield
-    # Shutdown
     websocket_manager.shutdown_event.set()
     logger.info("Application shutdown complete")
 
@@ -121,6 +119,27 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 data = await asyncio.wait_for(websocket.receive_json(), timeout=10.0)
                 if data.get("type") == "pong":
                     continue
+                elif data.get("type") == "emergency_lockdown":
+                    if data["data"]["action"] == "block_all":
+                        firewall_manager.block_all_traffic()
+                        security_monitor.set_lockdown_state(True)  # Pause sniffing
+                        await websocket_manager.broadcast({
+                            "type": "emergency_lockdown",
+                            "data": {"action": "block_all"}
+                        })
+                    elif data["data"]["action"] == "unblock_all":
+                        firewall_manager.unblock_all_traffic()
+                        security_monitor.set_lockdown_state(False)  # Resume sniffing
+                        await websocket_manager.broadcast({
+                            "type": "emergency_lockdown",
+                            "data": {"action": "unblock_all"}
+                        })
+                elif data.get("type") == "run_system_scan":
+                    security_monitor.reset_monitoring()
+                    await websocket_manager.broadcast({
+                        "type": "run_system_scan",
+                        "data": {"action": "restart_monitoring"}
+                    })
             except asyncio.TimeoutError:
                 continue
             except WebSocketDisconnect:
@@ -150,7 +169,7 @@ async def add_firewall_rule(rule: FirewallRule):
     if success:
         data = data_manager.load_data()
         threats = data.get("threats", [])
-        stats = security_monitor.get_current_stats()  # Recalculates correctly
+        stats = security_monitor.get_current_stats()
         data_manager.update_stats(stats)
         if rule.action == "block":
             threat_to_update = next((t for t in threats if t["source"] == rule.source_ip), None)
@@ -182,7 +201,7 @@ async def delete_firewall_rule(ip: str):
     if success:
         data = data_manager.load_data()
         threats = data.get("threats", [])
-        stats = security_monitor.get_current_stats()  # Recalculate with new logic
+        stats = security_monitor.get_current_stats()
         data_manager.update_stats(stats)
         
         threat_to_update = next((t for t in threats if t["source"] == ip), None)

@@ -51,8 +51,10 @@ interface SecurityState {
   firewallRules: FirewallRule[];
   alerts: Alert[];
   trafficHistory: TrafficEntry[];
+  isLockedDown: boolean;
   updateSecurityData: (data: Partial<SecurityState>) => void;
   clearAlerts: () => void;
+  setLockdownState: (isLocked: boolean) => void;
 }
 
 export const useSecurityData = create<SecurityState>()(
@@ -69,6 +71,7 @@ export const useSecurityData = create<SecurityState>()(
       threats: [],
       firewallRules: [],
       alerts: [],
+      isLockedDown: false,
       trafficHistory: [],
       updateSecurityData: (data) => set((state) => {
         let newRawTraffic = state.stats.rawNetworkTraffic;
@@ -121,6 +124,7 @@ export const useSecurityData = create<SecurityState>()(
         return newState;
       }),
       clearAlerts: () => set({ alerts: [] }),
+      setLockdownState: (isLocked) => set((state) => ({ ...state, isLockedDown: isLocked })),
     }),
     {
       name: "security-alerts",

@@ -7,34 +7,62 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWebSocket } from "./api/websocket";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { useSecurityData } from "./data/security-data";
+import emailjs from "emailjs-com";
 
 export function QuickActions({ onClose }: { onClose: () => void }) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const { startScan } = useWebSocket();
+  const { sendMessage } = useWebSocket();
+  const { isLockedDown } = useSecurityData(); // Use global state
 
   const handleEmergencyLockdown = () => {
-    console.log("Initiating Emergency Lockdown...");
-    // Future implementation: Trigger lockdown API call
+    if (!isLockedDown) {
+      console.log("Initiating Emergency Lockdown...");
+      sendMessage({
+        type: "emergency_lockdown",
+        data: { action: "block_all" },
+      });
+    } else {
+      console.log("Removing Emergency Lockdown...");
+      sendMessage({
+        type: "emergency_lockdown",
+        data: { action: "unblock_all" },
+      });
+    }
   };
 
   const handleAlertSecurityTeam = () => {
     console.log("Alerting Security Team...");
-    // Future implementation: Send alert to security team
+    
+    emailjs.send(
+      "service_tegek6q", // Replace with your EmailJS service ID
+      "template_ets2mdh", // Replace with your EmailJS template ID
+      {
+        message: "An emergency has been detected in the system. Immediate action required.",
+        to_email: "Anubhavchaudhary674@gmail.com", // Replace with actual recipient email
+      },
+      "4AKoOjeFwzCfqxTL8" // Replace with your EmailJS user/public key
+    ).then(
+      (response) => {
+        console.log("Security team alerted successfully.", response);
+      },
+      (error) => {
+        console.error("Failed to alert security team:", error);
+      }
+    );
   };
 
   const handleRunSystemScan = () => {
     setIsScanning(true);
-    startScan("quick"); // Send a "quick" scan request to the backend
+    console.log("Running System Scan...");
+    sendMessage({
+      type: "run_system_scan",
+      data: { action: "restart_monitoring" },
+    });
     setTimeout(() => {
       setIsScanning(false);
-      setShowTimeline(true); // Show the timeline to display the scan alert
-    }, 2000); // Simulate a delay for the loading state
-  };
-
-  const handleUpdateFirewall = () => {
-    console.log("Updating Firewall...");
-    // Future implementation: Trigger firewall update API call
+      setShowTimeline(true);
+    }, 2000);
   };
 
   return (
@@ -50,11 +78,13 @@ export function QuickActions({ onClose }: { onClose: () => void }) {
           <div className="grid grid-cols-2 gap-4">
             <Button
               variant="outline"
-              className="flex flex-col items-center gap-3 h-auto p-6 bg-gray-800/50 border-gray-700 rounded-lg shadow-md hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400 transition-all duration-300 transform hover:scale-105"
+              className={`flex flex-col items-center gap-3 h-auto p-6 bg-gray-800/50 border-gray-700 rounded-lg shadow-md hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400 transition-all duration-300 transform hover:scale-105`}
               onClick={handleEmergencyLockdown}
             >
               <Lock className="h-8 w-8" />
-              <span className="text-sm font-medium">Emergency Lockdown</span>
+              <span className="text-sm font-medium">
+                {isLockedDown ? "Remove Emergency Lockdown" : "Emergency Lockdown"}
+              </span>
             </Button>
             <Button
               variant="outline"
@@ -76,14 +106,6 @@ export function QuickActions({ onClose }: { onClose: () => void }) {
                 <RefreshCw className="h-8 w-8" />
               )}
               <span className="text-sm font-medium">Run System Scan</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="flex flex-col items-center gap-3 h-auto p-6 bg-gray-800/50 border-gray-700 rounded-lg shadow-md hover:bg-blue-500/20 hover:border-blue-500/50 hover:text-blue-400 transition-all duration-300 transform hover:scale-105"
-              onClick={handleUpdateFirewall}
-            >
-              <Shield className="h-8 w-8" />
-              <span className="text-sm font-medium">Update Firewall</span>
             </Button>
             <Button
               variant="outline"
@@ -119,10 +141,7 @@ function SystemTimeline({ onClose }: { onClose: () => void }) {
           <X className="h-5 w-5" />
         </Button>
       </CardHeader>
-      <CardContent
-        className="max-h-[300px] overflow-y-auto pt-4"
-        style={{ scrollbarWidth: "none" }}
-      >
+      <CardContent className="max-h-[300px] overflow-y-auto pt-4" style={{ scrollbarWidth: "none" }}>
         {alerts.length > 0 ? (
           [...alerts].reverse().map((item) => (
             <div key={item.id} className="flex items-start gap-4 py-2">

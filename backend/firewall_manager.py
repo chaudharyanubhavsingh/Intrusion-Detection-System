@@ -1,7 +1,7 @@
 import logging
 import subprocess
 import random
-import time  # Added import for time.sleep
+import time
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
@@ -39,13 +39,12 @@ class FirewallManager:
             except subprocess.CalledProcessError as e:
                 logger.error(f"Attempt {attempt + 1} failed: {str(e)} - {e.stderr}")
                 if "Bad rule" in e.stderr or "does a matching rule exist" in e.stderr:
-                    # Rule doesn’t exist, treat as success for deletion
                     if "-D" in command:
                         logger.info(f"No rule to delete in iptables for {command}, treating as success")
                         return True
                 if attempt + 1 == retries:
                     return False
-                time.sleep(1)  # Now works with time imported
+                time.sleep(1)
         return False
 
     def _rule_exists(self, source_ip: str, action: str) -> bool:
@@ -135,7 +134,6 @@ class FirewallManager:
                 if iptables_success:
                     logger.info(f"Removed orphaned iptables rule for IP: {rule_id_or_ip}")
                     return True
-            # If no rule in data or iptables, treat as success (idempotent)
             logger.info(f"No rule to remove for {rule_id_or_ip}, treating as success")
             return True
 
@@ -171,6 +169,21 @@ class FirewallManager:
             self._execute_iptables_command(iptables_cmd)
         logger.info(f"Applied {len(rules)} firewall rules to container")
         return True
+
+    def block_all_traffic(self) -> bool:
+        iptables_cmd = ["-P", "INPUT", "DROP"]
+        success = self._execute_iptables_command(iptables_cmd)
+        if success:
+            logger.info("Blocked all incoming traffic (Emergency Lockdown)")
+        return success
+
+    def unblock_all_traffic(self) -> bool:
+        iptables_cmd = ["-P", "INPUT", "ACCEPT"]
+        success = self._execute_iptables_command(iptables_cmd)
+        if success:
+            self.apply_rules()  # Reapply existing rules after unblocking
+            logger.info("Unblocked all incoming traffic and reapplied rules")
+        return success
 
     def get_firewall_status(self) -> Dict[str, Any]:
         try:

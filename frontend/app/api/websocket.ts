@@ -45,7 +45,8 @@ export type UseWebSocketReturn = {
 };
 
 const initializeWebSocket = (
-  updateSecurityData: (data: Partial<{ connected: boolean; stats: SecurityStats; threats: Threat[]; firewallRules: FirewallRule[]; alerts: Alert[] }>) => void
+  updateSecurityData: (data: Partial<{ connected: boolean; stats: SecurityStats; threats: Threat[]; firewallRules: FirewallRule[]; alerts: Alert[] }>) => void,
+  setLockdownState: (isLocked: boolean) => void
 ) => {
   if (socketInstance && socketInstance.readyState === WebSocket.OPEN) return socketInstance;
   if (isConnecting) return socketInstance;
@@ -92,7 +93,7 @@ const initializeWebSocket = (
     });
     socketInstance = null;
     isConnecting = false;
-    setTimeout(() => initializeWebSocket(updateSecurityData), 2000);
+    setTimeout(() => initializeWebSocket(updateSecurityData, setLockdownState), 2000);
   };
 
   socketInstance.onerror = (error) => {
@@ -104,7 +105,7 @@ const initializeWebSocket = (
 };
 
 export const useWebSocket = (): UseWebSocketReturn => {
-  const { connected, stats, threats, firewallRules, alerts, updateSecurityData } = useSecurityData();
+  const { connected, stats, threats, firewallRules, alerts, isLockedDown, updateSecurityData, setLockdownState } = useSecurityData();
   const lastMessageRef = useRef<WebSocketMessage | null>(null);
 
   const sendMessage = useCallback((message: WebSocketMessage) => {
@@ -120,21 +121,15 @@ export const useWebSocket = (): UseWebSocketReturn => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/threats/recent`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error: ${response.status} - ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error: ${response.status} - ${response.statusText}`);
       const fetchedThreats: Threat[] = await response.json();
-      // Log the timestamps of fetched threats
       console.log("Fetched threats with timestamps:", fetchedThreats.map(t => ({ id: t.id, timestamp: t.timestamp })));
-      // Append fetched threats to existing threats without overriding timestamps
       const combinedThreats = [
-        ...threats.filter(t => !fetchedThreats.some(ft => ft.id === t.id)), // Keep existing threats not in fetched list
-        ...fetchedThreats, // Add fetched threats with backend-provided timestamps
+        ...threats.filter(t => !fetchedThreats.some(ft => ft.id === t.id)),
+        ...fetchedThreats,
       ];
       updateSecurityData({ threats: combinedThreats });
       console.log("Updated threats:", combinedThreats);
@@ -150,16 +145,14 @@ export const useWebSocket = (): UseWebSocketReturn => {
       target_ips: targetIps,
     };
     sendMessage(message);
-    const newAlert: Alert = {
+    const scanStartAlert: Alert = {
       id: `scan-${Date.now()}`,
       type: "info",
       title: "System Scan Initiated",
       description: `A ${scanType} scan has started${targetIps ? ` on IPs: ${targetIps.join(", ")}` : ""}.`,
       time: new Date().toISOString(),
     };
-    updateSecurityData({
-      alerts: [...alerts, newAlert],
-    });
+    updateSecurityData({ alerts: [...alerts, scanStartAlert] });
   }, [sendMessage, updateSecurityData, alerts]);
 
   const handleMessage = useCallback((message: WebSocketMessage) => {
@@ -176,7 +169,6 @@ export const useWebSocket = (): UseWebSocketReturn => {
       case "threat_update":
         console.log("Received threat update:", message.data);
         const newThreat = message.data.threat;
-        // Log the timestamp of the new threat
         console.log("New threat timestamp:", newThreat.timestamp);
         const updatedThreats = threats.filter(t => t.id !== newThreat.id).concat(newThreat);
         const newThreatAlert: Alert = {
@@ -238,43 +230,63 @@ export const useWebSocket = (): UseWebSocketReturn => {
             alerts: [...alerts, unblockAlert],
           });
         }
-        // Ensure trafficHistory is updated if new stats are provided
-        if (message.data.stats?.network_traffic || message.data.stats?.rawNetworkTraffic) {
-          const newRawTraffic = message.data.stats.rawNetworkTraffic || parseFloat(message.data.stats.network_traffic) || 0;
-          const newEntry = { timestamp: new Date().toISOString(), value: newRawTraffic };
-          console.log("Adding to trafficHistory from firewall_update:", newEntry);
-          updateSecurityData({
-            trafficHistory: [...useSecurityData.getState().trafficHistory, newEntry],
-          });
+        break;
+      case "emergency_lockdown":
+        if (message.data.action === "block_all") {
+          const lockdownAlert: Alert = {
+            id: `lockdown-${Date.now()}`,
+            type: "warning",
+            title: "Emergency Lockdown Activated",
+            description: "All incoming traffic has been blocked.",
+            time: new Date().toISOString(),
+          };
+          updateSecurityData({ alerts: [...alerts, lockdownAlert] });
+          setLockdownState(true); // Sync with backend
+        } else if (message.data.action === "unblock_all") {
+          const unlockAlert: Alert = {
+            id: `unlock-${Date.now()}`,
+            type: "success",
+            title: "Emergency Lockdown Removed",
+            description: "All incoming traffic has been unblocked.",
+            time: new Date().toISOString(),
+          };
+          updateSecurityData({ alerts: [...alerts, unlockAlert] });
+          setLockdownState(false); // Sync with backend
         }
+        break;
+      case "run_system_scan":
+        const scanRestartAlert: Alert = {
+          id: `scan-restart-${Date.now()}`,
+          type: "info",
+          title: "System Scan Restarted",
+          description: "The monitoring system has been reset and is scanning anew.",
+          time: new Date().toISOString(),
+        };
+        updateSecurityData({ alerts: [...alerts, scanRestartAlert] });
         break;
       case "stats_update":
         console.log("Stats update received:", message.data);
-        updateSecurityData({
-          stats: message.data,
-        });
+        updateSecurityData({ stats: message.data });
         break;
       case "heartbeat":
         sendMessage({ type: "pong" });
         break;
       case "scan_update":
-        const scanAlert: Alert = {
+        const scanStatusAlert: Alert = {
           id: `scan-update-${Date.now()}`,
           type: message.data.status === "completed" ? "success" : "info",
           title: `Scan ${message.data.status}`,
           description: `Scan ${message.data.scan_id} ${message.data.status}${message.data.results ? `: ${message.data.results}` : ""}`,
           time: new Date().toISOString(),
         };
-        updateSecurityData({
-          alerts: [...alerts, scanAlert],
-        });
+        updateSecurityData({ alerts: [...alerts, scanStatusAlert] });
         break;
     }
-  }, [threats, firewallRules, alerts, stats, updateSecurityData, sendMessage]);
+  }, [threats, firewallRules, alerts, stats, updateSecurityData, sendMessage, setLockdownState]);
 
   useEffect(() => {
     console.log("Initializing WebSocket on mount");
-    initializeWebSocket(updateSecurityData);
+    initializeWebSocket(updateSecurityData, setLockdownState);
     listeners.add(handleMessage);
 
     const pollingInterval = setInterval(() => {
@@ -286,7 +298,7 @@ export const useWebSocket = (): UseWebSocketReturn => {
       listeners.delete(handleMessage);
       clearInterval(pollingInterval);
     };
-  }, [fetchRecentThreats, handleMessage, updateSecurityData]);
+  }, [fetchRecentThreats, handleMessage, updateSecurityData, setLockdownState]);
 
   return {
     connected,

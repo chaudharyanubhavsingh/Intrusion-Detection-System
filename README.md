@@ -3,11 +3,16 @@
 A full-stack, real-time Intrusion Detection and Prevention System that monitors network traffic, detects suspicious behavior using AI/ML, and automatically blocks malicious IPs using Docker-controlled firewall rules.
 
 ---
+## 🖼️ Screenshots
+
+
+
 ![WhatsApp Image 2025-04-30 at 23 01 45_8926fab2](https://github.com/user-attachments/assets/4ee63c0f-57b4-4fbc-9e09-ba1c07669b6b)
 ![WhatsApp Image 2025-04-30 at 23 02 58_c8b56470](https://github.com/user-attachments/assets/f5be1b82-3663-4cf2-afd3-21f306fe2e8e)
 ![WhatsApp Image 2025-04-30 at 23 00 53_15bcc0ee](https://github.com/user-attachments/assets/87012097-0986-4850-84fb-d92f56fc38b6)
 
 
+---
 ## 📌 Table of Contents
 - [Overview](#overview)
 - [Tech Stack](#tech-stack)
@@ -131,11 +136,7 @@ docker run -it --name demo_firewall --net=host --privileged ubuntu /bin/bash
 
 ---
 
-## 🖼️ Screenshots
 
-> Add dashboard screenshots, circular bar chart, threat logs, etc.
-
----
 
 ## 📊 Model Training & Dataset
 - Used NSL-KDD and CIC-IDS2017 datasets.
